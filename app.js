@@ -46,6 +46,7 @@ const roleScreen = document.getElementById("role-screen");
 const roleButtons = document.querySelectorAll(".icon");
 const clearRoleBtn = document.getElementById("clear-role");
 const currentRoleEl = document.getElementById("current-role");
+const iconGrid = document.querySelector(".icon-grid");
 
 const stickerWall = document.getElementById("sticker-wall");
 const stickerForm = document.getElementById("sticker-form");
@@ -62,6 +63,16 @@ const setRole = (role) => {
   } else if (currentRoleEl) {
     currentRoleEl.textContent = currentRole;
   }
+};
+
+const shuffleIcons = () => {
+  if (!iconGrid) return;
+  const items = Array.from(iconGrid.children);
+  for (let i = items.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [items[i], items[j]] = [items[j], items[i]];
+  }
+  items.forEach((item) => iconGrid.appendChild(item));
 };
 
 roleButtons.forEach((btn) => {
@@ -252,4 +263,8 @@ if (isOnOperationPage) {
       if (user) mountStickerWall();
     });
   }
+}
+
+if (roleScreen) {
+  shuffleIcons();
 }
