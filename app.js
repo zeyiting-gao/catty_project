@@ -28,7 +28,8 @@ const firebaseConfig = {
   authDomain: "project-for-storing.firebaseapp.com",
   databaseURL: "https://project-for-storing-default-rtdb.firebaseio.com",
   projectId: "project-for-storing",
-  storageBucket: "project-for-storing.firebasestorage.app",
+  // Use the canonical Storage bucket domain (.appspot.com) so uploads succeed
+  storageBucket: "project-for-storing.appspot.com",
   messagingSenderId: "253098125450",
   appId: "1:253098125450:web:27a52b2e6aee30efabe573",
   measurementId: "G-6QY24NVQCM",
