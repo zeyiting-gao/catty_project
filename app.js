@@ -456,6 +456,7 @@ const mountStickerWall = () => {
     stickerWallWrap.addEventListener("pointerdown", (event) => {
       if (event.button !== 0) return;
       if (event.target.closest(".sticker")) return;
+      event.preventDefault();
       panning = true;
       pointerId = event.pointerId;
       stickerWallWrap.setPointerCapture(pointerId);

@@ -382,6 +382,8 @@ h1 {
   height: 520px;
   overflow: hidden;
   cursor: grab;
+  overscroll-behavior: contain;
+  touch-action: none;
   background:
     radial-gradient(circle at 10% 10%, rgba(255, 245, 209, 0.8), transparent 55%),
     radial-gradient(circle at 80% 20%, rgba(255, 223, 234, 0.7), transparent 60%),
@@ -398,8 +400,8 @@ h1 {
 
 .sticker-wall {
   position: relative;
-  width: 2200px;
-  height: 1400px;
+  width: 5000px;
+  height: 4000px;
 }
 
 .sticker {
