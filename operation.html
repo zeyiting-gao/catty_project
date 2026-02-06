@@ -27,12 +27,17 @@
             type="text"
             placeholder="写下想贴的内容…"
             maxlength="120"
-            required
+          />
+          <input
+            id="sticker-image"
+            class="sticker-file"
+            type="file"
+            accept="image/*"
           />
           <button type="submit">贴上</button>
         </form>
 
-        <div class="sticker-hint">提示：拖动贴纸可以移动位置；双击贴纸可以删除。</div>
+        <div class="sticker-hint">提示：可上传图片（JPG/PNG），拖动贴纸可以移动位置；双击贴纸可以删除。</div>
 
         <div id="sticker-wall" class="sticker-wall" aria-live="polite"></div>
       </section>

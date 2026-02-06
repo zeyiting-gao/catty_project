@@ -11,6 +11,13 @@ import {
   serverTimestamp,
 } from "https://www.gstatic.com/firebasejs/9.22.2/firebase-database.js";
 import {
+  getStorage,
+  ref as storageRef,
+  uploadBytes,
+  getDownloadURL,
+  deleteObject,
+} from "https://www.gstatic.com/firebasejs/9.22.2/firebase-storage.js";
+import {
   getAuth,
   signInAnonymously,
   onAuthStateChanged,
@@ -29,6 +36,7 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
+const storage = getStorage(app);
 const auth = getAuth(app);
 
 const allowedRoles = new Set(["小猫", "中猫"]);
@@ -51,6 +59,7 @@ const iconGrid = document.querySelector(".icon-grid");
 const stickerWall = document.getElementById("sticker-wall");
 const stickerForm = document.getElementById("sticker-form");
 const stickerInput = document.getElementById("sticker-input");
+const stickerImageInput = document.getElementById("sticker-image");
 
 const isOnOperationPage = window.location.pathname.endsWith("operation.html");
 
@@ -116,10 +125,22 @@ const randomColor = () => {
   return palette[Math.floor(Math.random() * palette.length)];
 };
 
+const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
+
+const createStickerImage = (url) => {
+  const image = document.createElement("img");
+  image.className = "sticker-media";
+  image.src = url;
+  image.alt = "贴纸照片";
+  image.loading = "lazy";
+  return image;
+};
+
 const createStickerNode = (id, data) => {
   const node = document.createElement("div");
   node.className = "sticker";
   node.dataset.id = id;
+  node.dataset.imagePath = data.imagePath || "";
   node.style.left = `${data.x ?? 20}px`;
   node.style.top = `${data.y ?? 20}px`;
   node.style.background = data.color || randomColor();
@@ -135,6 +156,9 @@ const createStickerNode = (id, data) => {
   text.textContent = data.text || "";
 
   node.appendChild(meta);
+  if (data.imageUrl) {
+    node.appendChild(createStickerImage(data.imageUrl));
+  }
   node.appendChild(text);
 
   text.addEventListener("blur", () => {
@@ -145,7 +169,15 @@ const createStickerNode = (id, data) => {
     });
   });
 
-  node.addEventListener("dblclick", () => {
+  node.addEventListener("dblclick", async () => {
+    const imagePath = node.dataset.imagePath;
+    if (imagePath) {
+      try {
+        await deleteObject(storageRef(storage, imagePath));
+      } catch (error) {
+        console.error("Failed to delete sticker image", error);
+      }
+    }
     remove(ref(db, `catty_stickers/${id}`));
   });
 
@@ -213,12 +245,30 @@ const mountStickerWall = () => {
     existing.style.left = `${data.x ?? 20}px`;
     existing.style.top = `${data.y ?? 20}px`;
     existing.style.background = data.color || existing.style.background;
+    existing.dataset.imagePath = data.imagePath || "";
     const text = existing.querySelector(".sticker-text");
     if (text && text.textContent !== data.text) {
       text.textContent = data.text || "";
     }
     const meta = existing.querySelector(".sticker-meta");
     if (meta) meta.textContent = data.role || "—";
+
+    const existingImage = existing.querySelector(".sticker-media");
+    if (data.imageUrl) {
+      if (existingImage) {
+        existingImage.src = data.imageUrl;
+      } else {
+        const textNode = existing.querySelector(".sticker-text");
+        const image = createStickerImage(data.imageUrl);
+        if (textNode) {
+          existing.insertBefore(image, textNode);
+        } else {
+          existing.appendChild(image);
+        }
+      }
+    } else if (existingImage) {
+      existingImage.remove();
+    }
   });
 
   onChildRemoved(stickersRef, (snapshot) => {
@@ -227,26 +277,74 @@ const mountStickerWall = () => {
   });
 
   if (stickerForm) {
+    const submitButton = stickerForm.querySelector('button[type="submit"]');
     stickerForm.addEventListener("submit", async (event) => {
       event.preventDefault();
       const text = stickerInput.value.trim();
-      if (!text || !currentRole) return;
+      const file = stickerImageInput?.files?.[0] ?? null;
+      if ((!text && !file) || !currentRole) return;
+
+      if (file) {
+        if (!file.type.startsWith("image/")) {
+          alert("请选择图片文件（JPG/PNG）。");
+          return;
+        }
+        if (file.size > MAX_IMAGE_SIZE) {
+          alert("图片大小请小于 5MB。");
+          return;
+        }
+      }
 
       const rect = stickerWall.getBoundingClientRect();
       const x = Math.max(20, rect.width * 0.5 - 80 + (Math.random() * 60 - 30));
       const y = Math.max(20, rect.height * 0.1 + (Math.random() * 40));
 
-      await push(stickersRef, {
-        role: currentRole,
-        text,
-        x,
-        y,
-        color: randomColor(),
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      });
+      let imageUrl = "";
+      let imagePath = "";
+
+      try {
+        if (file) {
+          if (submitButton) {
+            submitButton.disabled = true;
+            submitButton.textContent = "上传中…";
+          }
+          const extension = file.name?.split(".").pop() || "jpg";
+          const imageId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+          imagePath = `catty_stickers_images/${imageId}.${extension}`;
+          const imageRef = storageRef(storage, imagePath);
+          await uploadBytes(imageRef, file);
+          imageUrl = await getDownloadURL(imageRef);
+        }
+
+        const payload = {
+          role: currentRole,
+          text,
+          x,
+          y,
+          color: randomColor(),
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        };
+
+        if (imageUrl) {
+          payload.imageUrl = imageUrl;
+          payload.imagePath = imagePath;
+        }
+
+        await push(stickersRef, payload);
+      } catch (error) {
+        console.error("Failed to create sticker", error);
+        alert("上传失败，请稍后再试。");
+        return;
+      } finally {
+        if (submitButton) {
+          submitButton.disabled = false;
+          submitButton.textContent = "贴上";
+        }
+      }
 
       stickerInput.value = "";
+      if (stickerImageInput) stickerImageInput.value = "";
     });
   }
 };
