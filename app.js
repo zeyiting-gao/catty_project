@@ -128,27 +128,19 @@ const randomColor = () => {
 
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
 const EMOJI_CHOICES = [
-  "😀",
-  "🥰",
-  "😂",
-  "😮",
-  "😢",
-  "😡",
-  "🤯",
-  "😴",
-  "🤔",
-  "😎",
-  "🥳",
-  "😭",
-  "😇",
-  "😤",
-  "😱",
-  "🤝",
-  "👏",
-  "💖",
-  "🔥",
-  "✨",
+  "😀", "😁", "😂", "🤣", "😃", "😄", "😅", "😆", "😉", "😊",
+  "😋", "😎", "😍", "🥰", "😘", "😗", "😙", "😚", "🙂", "🤗",
+  "🤩", "🤔", "🤨", "😐", "😑", "😶", "🙄", "😏", "😣", "😥",
+  "😮", "🤐", "😯", "😪", "😴", "😌", "😛", "😜", "😝", "🤤",
+  "😒", "😓", "😔", "😕", "🙃", "🫠", "🤑", "😲", "☹️", "🙁",
+  "😖", "😞", "😟", "😤", "😢", "😭", "😦", "😧", "😨", "😩",
+  "🤯", "😬", "😰", "😱", "🥵", "🥶", "😳", "🤪", "😵", "🥴",
+  "😠", "😡", "🤬", "😷", "🤒", "🤕", "🤢", "🤮", "🤧", "😇",
+  "🥳", "🤠", "🫶", "🤝", "👏", "🙌", "👍", "👎", "🙏", "💖",
+  "💘", "💝", "💔", "❤️‍🔥", "❤️‍🩹", "❤️", "🧡", "💛", "💚", "💙",
+  "💜", "🤍", "🤎", "🖤", "✨", "🌟", "🔥", "🌈"
 ];
+const DEFAULT_EMOJI_ICON = "🙂";
 
 const createStickerImage = (url) => {
   const image = document.createElement("img");
@@ -193,7 +185,8 @@ const createStickerNode = (id, data) => {
   const emojiButton = document.createElement("button");
   emojiButton.type = "button";
   emojiButton.className = "sticker-emoji-btn";
-  emojiButton.textContent = "表情";
+  emojiButton.textContent = data.emoji || DEFAULT_EMOJI_ICON;
+  emojiButton.title = "选择表情";
 
   const text = document.createElement("div");
   text.className = "sticker-text";
@@ -202,6 +195,9 @@ const createStickerNode = (id, data) => {
   text.textContent = data.text || "";
 
   const emojiPanel = createEmojiPanel((emoji) => {
+    emojiButton.textContent = emoji;
+    emojiBadge.textContent = emoji;
+    emojiBadge.classList.toggle("is-empty", !emoji);
     update(ref(db, `catty_stickers/${id}`), {
       emoji,
       updatedAt: serverTimestamp(),
@@ -328,6 +324,10 @@ const mountStickerWall = () => {
     if (emojiBadge) {
       emojiBadge.textContent = data.emoji || "";
       emojiBadge.classList.toggle("is-empty", !data.emoji);
+    }
+    const emojiBtn = existing.querySelector(".sticker-emoji-btn");
+    if (emojiBtn) {
+      emojiBtn.textContent = data.emoji || DEFAULT_EMOJI_ICON;
     }
 
     const existingImage = existing.querySelector(".sticker-media");
