@@ -57,6 +57,7 @@ const currentRoleEl = document.getElementById("current-role");
 const iconGrid = document.querySelector(".icon-grid");
 
 const stickerWall = document.getElementById("sticker-wall");
+const stickerWallWrap = document.querySelector(".sticker-wall-wrap");
 const stickerForm = document.getElementById("sticker-form");
 const stickerInput = document.getElementById("sticker-input");
 const stickerImageInput = document.getElementById("sticker-image");
@@ -126,6 +127,28 @@ const randomColor = () => {
 };
 
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
+const EMOJI_CHOICES = [
+  "😀",
+  "🥰",
+  "😂",
+  "😮",
+  "😢",
+  "😡",
+  "🤯",
+  "😴",
+  "🤔",
+  "😎",
+  "🥳",
+  "😭",
+  "😇",
+  "😤",
+  "😱",
+  "🤝",
+  "👏",
+  "💖",
+  "🔥",
+  "✨",
+];
 
 const createStickerImage = (url) => {
   const image = document.createElement("img");
@@ -134,6 +157,19 @@ const createStickerImage = (url) => {
   image.alt = "贴纸照片";
   image.loading = "lazy";
   return image;
+};
+
+const createEmojiPanel = (onSelect) => {
+  const panel = document.createElement("div");
+  panel.className = "sticker-emoji-panel";
+  EMOJI_CHOICES.forEach((emoji) => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.textContent = emoji;
+    btn.addEventListener("click", () => onSelect(emoji));
+    panel.appendChild(btn);
+  });
+  return panel;
 };
 
 const createStickerNode = (id, data) => {
@@ -149,13 +185,34 @@ const createStickerNode = (id, data) => {
   meta.className = "sticker-meta";
   meta.textContent = data.role || "—";
 
+  const emojiBadge = document.createElement("div");
+  emojiBadge.className = "sticker-emoji";
+  emojiBadge.textContent = data.emoji || "";
+  if (!data.emoji) emojiBadge.classList.add("is-empty");
+
+  const emojiButton = document.createElement("button");
+  emojiButton.type = "button";
+  emojiButton.className = "sticker-emoji-btn";
+  emojiButton.textContent = "表情";
+
   const text = document.createElement("div");
   text.className = "sticker-text";
   text.contentEditable = "true";
   text.spellcheck = false;
   text.textContent = data.text || "";
 
+  const emojiPanel = createEmojiPanel((emoji) => {
+    update(ref(db, `catty_stickers/${id}`), {
+      emoji,
+      updatedAt: serverTimestamp(),
+    });
+  });
+  emojiPanel.style.display = "none";
+
   node.appendChild(meta);
+  node.appendChild(emojiBadge);
+  node.appendChild(emojiButton);
+  node.appendChild(emojiPanel);
   if (data.imageUrl) {
     node.appendChild(createStickerImage(data.imageUrl));
   }
@@ -167,6 +224,18 @@ const createStickerNode = (id, data) => {
       text: updatedText,
       updatedAt: serverTimestamp(),
     });
+  });
+
+  emojiButton.addEventListener("click", (event) => {
+    event.stopPropagation();
+    const isOpen = emojiPanel.style.display === "grid";
+    emojiPanel.style.display = isOpen ? "none" : "grid";
+  });
+
+  document.addEventListener("click", (event) => {
+    if (!node.contains(event.target)) {
+      emojiPanel.style.display = "none";
+    }
   });
 
   node.addEventListener("dblclick", async () => {
@@ -213,6 +282,8 @@ const createStickerNode = (id, data) => {
 
   let pointerId = null;
   node.addEventListener("pointerdown", (event) => {
+    if (event.target.closest(".sticker-emoji-panel")) return;
+    if (event.target.closest(".sticker-emoji-btn")) return;
     if (event.target === text) return;
     dragging = true;
     pointerId = event.pointerId;
@@ -252,6 +323,12 @@ const mountStickerWall = () => {
     }
     const meta = existing.querySelector(".sticker-meta");
     if (meta) meta.textContent = data.role || "—";
+
+    const emojiBadge = existing.querySelector(".sticker-emoji");
+    if (emojiBadge) {
+      emojiBadge.textContent = data.emoji || "";
+      emojiBadge.classList.toggle("is-empty", !data.emoji);
+    }
 
     const existingImage = existing.querySelector(".sticker-media");
     if (data.imageUrl) {
@@ -345,6 +422,51 @@ const mountStickerWall = () => {
 
       stickerInput.value = "";
       if (stickerImageInput) stickerImageInput.value = "";
+    });
+  }
+
+  if (stickerWallWrap) {
+    let panning = false;
+    let startX = 0;
+    let startY = 0;
+    let startScrollLeft = 0;
+    let startScrollTop = 0;
+    let pointerId = null;
+
+    const onPanMove = (event) => {
+      if (!panning) return;
+      const dx = event.clientX - startX;
+      const dy = event.clientY - startY;
+      stickerWallWrap.scrollLeft = startScrollLeft - dx;
+      stickerWallWrap.scrollTop = startScrollTop - dy;
+    };
+
+    const onPanEnd = () => {
+      if (!panning) return;
+      panning = false;
+      stickerWallWrap.classList.remove("is-panning");
+      if (pointerId !== null) {
+        stickerWallWrap.releasePointerCapture(pointerId);
+      }
+      document.removeEventListener("pointermove", onPanMove);
+      document.removeEventListener("pointerup", onPanEnd);
+      document.removeEventListener("pointercancel", onPanEnd);
+    };
+
+    stickerWallWrap.addEventListener("pointerdown", (event) => {
+      if (event.button !== 0) return;
+      if (event.target.closest(".sticker")) return;
+      panning = true;
+      pointerId = event.pointerId;
+      stickerWallWrap.setPointerCapture(pointerId);
+      stickerWallWrap.classList.add("is-panning");
+      startX = event.clientX;
+      startY = event.clientY;
+      startScrollLeft = stickerWallWrap.scrollLeft;
+      startScrollTop = stickerWallWrap.scrollTop;
+      document.addEventListener("pointermove", onPanMove);
+      document.addEventListener("pointerup", onPanEnd);
+      document.addEventListener("pointercancel", onPanEnd);
     });
   }
 };
