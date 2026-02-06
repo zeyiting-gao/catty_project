@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="zh-Hans">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>猫猫贴纸墙</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body data-role="">
+    <main class="page">
+      <header class="hero">
+        <h1>贴纸墙</h1>
+        <p class="subtitle">把想说的话贴在这里吧。</p>
+      </header>
+
+      <section id="sticker-screen" class="card sticker-screen">
+        <div class="sticker-header">
+          <div>
+            <h2>今天的心情贴纸</h2>
+            <p class="sticker-meta">当前身份：<span id="current-role">—</span></p>
+          </div>
+        </div>
+
+        <form id="sticker-form" class="sticker-form">
+          <input
+            id="sticker-input"
+            type="text"
+            placeholder="写下想贴的内容…"
+            maxlength="120"
+            required
+          />
+          <button type="submit">贴上</button>
+        </form>
+
+        <div class="sticker-hint">提示：拖动贴纸可以移动位置；双击贴纸可以删除。</div>
+
+        <div id="sticker-wall" class="sticker-wall" aria-live="polite"></div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <p>只属于中猫和小猫的小小宇宙。</p>
+    </footer>
+
+    <script type="module" src="app.js"></script>
+  </body>
+</html>
