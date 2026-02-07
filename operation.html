@@ -19,6 +19,20 @@
             <h2>今天的心情贴纸</h2>
             <p class="sticker-meta">我的身份是：<span id="current-role">—</span></p>
           </div>
+          <div class="sticker-zoom" aria-label="调整贴纸墙大小">
+            <button type="button" class="zoom-btn" id="zoom-out" aria-label="缩小">-</button>
+            <input
+              id="wall-zoom"
+              type="range"
+              min="0.6"
+              max="1.6"
+              step="0.1"
+              value="1"
+              aria-label="贴纸墙缩放"
+            />
+            <button type="button" class="zoom-btn" id="zoom-in" aria-label="放大">+</button>
+            <span class="zoom-value" id="zoom-value">100%</span>
+          </div>
         </div>
 
         <form id="sticker-form" class="sticker-form">

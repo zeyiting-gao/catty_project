@@ -62,6 +62,10 @@ const stickerWallWrap = document.querySelector(".sticker-wall-wrap");
 const stickerForm = document.getElementById("sticker-form");
 const stickerInput = document.getElementById("sticker-input");
 const stickerImageInput = document.getElementById("sticker-image");
+const zoomRange = document.getElementById("wall-zoom");
+const zoomOutBtn = document.getElementById("zoom-out");
+const zoomInBtn = document.getElementById("zoom-in");
+const zoomValueEl = document.getElementById("zoom-value");
 
 const isOnOperationPage = window.location.pathname.endsWith("operation.html");
 
@@ -142,6 +146,21 @@ const EMOJI_CHOICES = [
   "💜", "🤍", "🤎", "🖤", "✨", "🌟", "🔥", "🌈"
 ];
 const DEFAULT_EMOJI_ICON = "🙂";
+const DELETE_ROLES = new Set(["小猫", "中猫"]);
+const ZOOM_MIN = 0.6;
+const ZOOM_MAX = 1.6;
+const ZOOM_STEP = 0.1;
+let currentZoom = 1;
+
+const formatStickerTime = (timestamp) => {
+  if (!timestamp) return "";
+  const date = new Date(timestamp);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleTimeString("zh-CN", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+};
 
 const createStickerImage = (url) => {
   const image = document.createElement("img");
@@ -178,6 +197,10 @@ const createStickerNode = (id, data) => {
   meta.className = "sticker-meta";
   meta.textContent = data.role || "—";
 
+  const time = document.createElement("div");
+  time.className = "sticker-time";
+  time.textContent = formatStickerTime(data.createdAt);
+
   const emojiBadge = document.createElement("div");
   emojiBadge.className = "sticker-emoji";
   emojiBadge.textContent = data.emoji || "";
@@ -207,6 +230,7 @@ const createStickerNode = (id, data) => {
   emojiPanel.style.display = "none";
 
   node.appendChild(meta);
+  node.appendChild(time);
   node.appendChild(emojiBadge);
   node.appendChild(emojiButton);
   node.appendChild(emojiPanel);
@@ -236,6 +260,9 @@ const createStickerNode = (id, data) => {
   });
 
   node.addEventListener("dblclick", async () => {
+    if (!DELETE_ROLES.has(currentRole)) {
+      return;
+    }
     const imagePath = node.dataset.imagePath;
     if (imagePath) {
       try {
@@ -255,8 +282,8 @@ const createStickerNode = (id, data) => {
 
   const onPointerMove = (event) => {
     if (!dragging) return;
-    const dx = event.clientX - startX;
-    const dy = event.clientY - startY;
+    const dx = (event.clientX - startX) / currentZoom;
+    const dy = (event.clientY - startY) / currentZoom;
     node.style.left = `${originX + dx}px`;
     node.style.top = `${originY + dy}px`;
   };
@@ -320,6 +347,8 @@ const mountStickerWall = () => {
     }
     const meta = existing.querySelector(".sticker-meta");
     if (meta) meta.textContent = data.role || "—";
+    const time = existing.querySelector(".sticker-time");
+    if (time) time.textContent = formatStickerTime(data.createdAt);
 
     const emojiBadge = existing.querySelector(".sticker-emoji");
     if (emojiBadge) {
@@ -446,8 +475,8 @@ const mountStickerWall = () => {
 
     const onPanMove = (event) => {
       if (!panning) return;
-      const dx = event.clientX - startX;
-      const dy = event.clientY - startY;
+      const dx = (event.clientX - startX) / currentZoom;
+      const dy = (event.clientY - startY) / currentZoom;
       stickerWallWrap.scrollLeft = startScrollLeft - dx;
       stickerWallWrap.scrollTop = startScrollTop - dy;
     };
@@ -494,6 +523,45 @@ if (isOnOperationPage) {
     onAuthStateChanged(auth, (user) => {
       if (user) mountStickerWall();
     });
+
+    const applyZoom = (value, keepCenter = true) => {
+      const next = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, value));
+      if (!stickerWall || !stickerWallWrap) return;
+
+      if (keepCenter) {
+        const rect = stickerWallWrap.getBoundingClientRect();
+        const centerX = stickerWallWrap.scrollLeft + rect.width / 2;
+        const centerY = stickerWallWrap.scrollTop + rect.height / 2;
+        const ratio = next / currentZoom;
+        stickerWallWrap.scrollLeft = Math.max(0, centerX * ratio - rect.width / 2);
+        stickerWallWrap.scrollTop = Math.max(0, centerY * ratio - rect.height / 2);
+      }
+
+      currentZoom = next;
+      stickerWall.style.transform = `scale(${currentZoom})`;
+      if (zoomRange) zoomRange.value = String(currentZoom);
+      if (zoomValueEl) {
+        zoomValueEl.textContent = `${Math.round(currentZoom * 100)}%`;
+      }
+    };
+
+    if (zoomRange) {
+      zoomRange.addEventListener("input", (event) => {
+        const value = Number(event.target.value);
+        applyZoom(value);
+      });
+    }
+    if (zoomOutBtn) {
+      zoomOutBtn.addEventListener("click", () => {
+        applyZoom(currentZoom - ZOOM_STEP);
+      });
+    }
+    if (zoomInBtn) {
+      zoomInBtn.addEventListener("click", () => {
+        applyZoom(currentZoom + ZOOM_STEP);
+      });
+    }
+    applyZoom(currentZoom, false);
   }
 }
 
