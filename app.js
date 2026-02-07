@@ -358,6 +358,7 @@ const mountStickerWall = () => {
     const submitButton = stickerForm.querySelector('button[type="submit"]');
     stickerForm.addEventListener("submit", async (event) => {
       event.preventDefault();
+      if (!stickerWallWrap) return;
       const text = stickerInput.value.trim();
       const file = stickerImageInput?.files?.[0] ?? null;
       if ((!text && !file) || !currentRole) return;
@@ -373,9 +374,18 @@ const mountStickerWall = () => {
         }
       }
 
-      const rect = stickerWall.getBoundingClientRect();
-      const x = Math.max(20, rect.width * 0.5 - 80 + (Math.random() * 60 - 30));
-      const y = Math.max(20, rect.height * 0.1 + (Math.random() * 40));
+      // Drop the new sticker inside the area the user is currently looking at
+      // instead of somewhere in the 5000px-wide canvas center (which felt like
+      // “nothing happened”).
+      const view = stickerWallWrap.getBoundingClientRect();
+      const x = Math.max(
+        20,
+        stickerWallWrap.scrollLeft + view.width * 0.5 - 80 + (Math.random() * 60 - 30)
+      );
+      const y = Math.max(
+        20,
+        stickerWallWrap.scrollTop + view.height * 0.3 + (Math.random() * 40 - 20)
+      );
 
       let imageUrl = "";
       let imagePath = "";
